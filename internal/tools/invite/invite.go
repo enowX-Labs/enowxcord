@@ -1,4 +1,4 @@
-package main
+package invite
 
 import (
 	"context"
@@ -6,12 +6,11 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
+	"github.com/enowx/enowxcord/internal/tools"
 )
 
-func registerInviteTools(s *server.MCPServer, d *Discord) {
-	bot := d.Session
-	guildID := d.GuildID
-
+func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 	s.AddTool(
 		mcp.NewTool("list_invites",
 			mcp.WithDescription("List all active invites for the server"),
@@ -19,9 +18,9 @@ func registerInviteTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			invites, err := bot.GuildInvites(guildID)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			type inv struct {
+			type entry struct {
 				Code      string `json:"code"`
 				ChannelID string `json:"channel_id"`
 				Uses      int    `json:"uses"`
@@ -30,24 +29,21 @@ func registerInviteTools(s *server.MCPServer, d *Discord) {
 				Temporary bool   `json:"temporary"`
 				CreatedBy string `json:"created_by,omitempty"`
 			}
-			result := make([]inv, 0, len(invites))
+			result := make([]entry, 0, len(invites))
 			for _, i := range invites {
-				entry := inv{
-					Code:      i.Code,
-					Uses:      i.Uses,
-					MaxUses:   i.MaxUses,
-					MaxAge:    i.MaxAge,
-					Temporary: i.Temporary,
+				e := entry{
+					Code: i.Code, Uses: i.Uses, MaxUses: i.MaxUses,
+					MaxAge: i.MaxAge, Temporary: i.Temporary,
 				}
 				if i.Channel != nil {
-					entry.ChannelID = i.Channel.ID
+					e.ChannelID = i.Channel.ID
 				}
 				if i.Inviter != nil {
-					entry.CreatedBy = i.Inviter.Username
+					e.CreatedBy = i.Inviter.Username
 				}
-				result = append(result, entry)
+				result = append(result, e)
 			}
-			return resultJSON(result)
+			return tools.JSON(result)
 		},
 	)
 
@@ -62,20 +58,17 @@ func registerInviteTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			invite, err := bot.ChannelInviteCreate(channelID, discordgo.Invite{
+			inv, err := bot.ChannelInviteCreate(channelID, discordgo.Invite{
 				MaxAge:    int(req.GetFloat("max_age", 86400)),
 				MaxUses:   int(req.GetFloat("max_uses", 0)),
 				Temporary: req.GetBool("temporary", false),
 			})
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]string{
-				"code": invite.Code,
-				"url":  "https://discord.gg/" + invite.Code,
-			})
+			return tools.JSON(map[string]string{"code": inv.Code, "url": "https://discord.gg/" + inv.Code})
 		},
 	)
 
@@ -88,11 +81,10 @@ func registerInviteTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			code, err := req.RequireString("invite_code")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			_, err = bot.InviteDelete(code)
-			if err != nil {
-				return toolError(err.Error())
+			if _, err = bot.InviteDelete(code); err != nil {
+				return tools.Error(err.Error())
 			}
 			return mcp.NewToolResultText("invite deleted"), nil
 		},

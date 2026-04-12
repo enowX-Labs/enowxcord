@@ -8,7 +8,7 @@ Built with Go, [mcp-go](https://github.com/mark3labs/mcp-go), and [discordgo](ht
 
 ```bash
 # Build
-go build -o enowxcord .
+go build -o enowxcord ./cmd/enowxcord
 
 # Run (SSE transport, default port 8080)
 DISCORD_TOKEN=your-bot-token GUILD_ID=your-guild-id ./enowxcord

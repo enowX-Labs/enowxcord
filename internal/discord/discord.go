@@ -1,4 +1,4 @@
-package main
+package discord
 
 import (
 	"fmt"
@@ -7,12 +7,12 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-type Discord struct {
+type Client struct {
 	Session *discordgo.Session
 	GuildID string
 }
 
-func NewDiscord() (*Discord, error) {
+func New() (*Client, error) {
 	token := os.Getenv("DISCORD_TOKEN")
 	if token == "" {
 		return nil, fmt.Errorf("DISCORD_TOKEN environment variable is required")
@@ -39,11 +39,11 @@ func NewDiscord() (*Discord, error) {
 		return nil, fmt.Errorf("failed to open discord session: %w", err)
 	}
 
-	return &Discord{Session: session, GuildID: guildID}, nil
+	return &Client{Session: session, GuildID: guildID}, nil
 }
 
-func (d *Discord) Close() {
-	if d.Session != nil {
-		d.Session.Close()
+func (c *Client) Close() {
+	if c.Session != nil {
+		c.Session.Close()
 	}
 }

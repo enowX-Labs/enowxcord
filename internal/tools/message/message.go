@@ -1,4 +1,4 @@
-package main
+package message
 
 import (
 	"context"
@@ -7,11 +7,11 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
+	"github.com/enowx/enowxcord/internal/tools"
 )
 
-func registerMessageTools(s *server.MCPServer, d *Discord) {
-	bot := d.Session
-
+func Register(s *server.MCPServer, bot *discordgo.Session) {
 	s.AddTool(
 		mcp.NewTool("send_message",
 			mcp.WithDescription("Send a message to a channel"),
@@ -21,17 +21,17 @@ func registerMessageTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			content, err := req.RequireString("content")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			msg, err := bot.ChannelMessageSend(channelID, content)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]string{"message_id": msg.ID})
+			return tools.JSON(map[string]string{"message_id": msg.ID})
 		},
 	)
 
@@ -47,7 +47,7 @@ func registerMessageTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			embed := &discordgo.MessageEmbed{
 				Title:       req.GetString("title", ""),
@@ -59,9 +59,9 @@ func registerMessageTools(s *server.MCPServer, d *Discord) {
 			}
 			msg, err := bot.ChannelMessageSendEmbed(channelID, embed)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]string{"message_id": msg.ID})
+			return tools.JSON(map[string]string{"message_id": msg.ID})
 		},
 	)
 
@@ -75,33 +75,32 @@ func registerMessageTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			count, err := req.RequireFloat("count")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			c := int(count)
 			if c < 2 {
-				return toolError("count must be at least 2")
+				return tools.Error("count must be at least 2")
 			}
 			if c > 100 {
 				c = 100
 			}
 			messages, err := bot.ChannelMessages(channelID, c, "", "", "")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			ids := make([]string, 0, len(messages))
 			for _, m := range messages {
 				ids = append(ids, m.ID)
 			}
 			if len(ids) < 2 {
-				return toolError("not enough messages to delete")
+				return tools.Error("not enough messages to delete")
 			}
-			err = bot.ChannelMessagesBulkDelete(channelID, ids)
-			if err != nil {
-				return toolError(err.Error())
+			if err = bot.ChannelMessagesBulkDelete(channelID, ids); err != nil {
+				return tools.Error(err.Error())
 			}
 			return mcp.NewToolResultText(fmt.Sprintf("deleted %d messages", len(ids))), nil
 		},
@@ -116,15 +115,14 @@ func registerMessageTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			messageID, err := req.RequireString("message_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			err = bot.ChannelMessagePin(channelID, messageID)
-			if err != nil {
-				return toolError(err.Error())
+			if err = bot.ChannelMessagePin(channelID, messageID); err != nil {
+				return tools.Error(err.Error())
 			}
 			return mcp.NewToolResultText("message pinned"), nil
 		},
@@ -140,18 +138,17 @@ func registerMessageTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			name, err := req.RequireString("name")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			archiveDuration := int(req.GetFloat("auto_archive_duration", 1440))
-			thread, err := bot.ThreadStart(channelID, name, discordgo.ChannelTypeGuildPublicThread, archiveDuration)
+			thread, err := bot.ThreadStart(channelID, name, discordgo.ChannelTypeGuildPublicThread, int(req.GetFloat("auto_archive_duration", 1440)))
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]string{"id": thread.ID, "name": thread.Name})
+			return tools.JSON(map[string]string{"id": thread.ID, "name": thread.Name})
 		},
 	)
 }

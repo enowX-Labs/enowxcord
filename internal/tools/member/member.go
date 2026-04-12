@@ -1,4 +1,4 @@
-package main
+package member
 
 import (
 	"context"
@@ -8,12 +8,11 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
+	"github.com/enowx/enowxcord/internal/tools"
 )
 
-func registerMemberTools(s *server.MCPServer, d *Discord) {
-	bot := d.Session
-	guildID := d.GuildID
-
+func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 	s.AddTool(
 		mcp.NewTool("list_members",
 			mcp.WithDescription("List server members (up to 100)"),
@@ -29,26 +28,24 @@ func registerMemberTools(s *server.MCPServer, d *Discord) {
 			}
 			members, err := bot.GuildMembers(guildID, "", limit)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			type m struct {
+			type entry struct {
 				UserID   string   `json:"user_id"`
 				Username string   `json:"username"`
 				Nick     string   `json:"nick,omitempty"`
 				Roles    []string `json:"roles"`
 				JoinedAt string   `json:"joined_at"`
 			}
-			result := make([]m, 0, len(members))
-			for _, member := range members {
-				result = append(result, m{
-					UserID:   member.User.ID,
-					Username: member.User.Username,
-					Nick:     member.Nick,
-					Roles:    member.Roles,
-					JoinedAt: member.JoinedAt.Format(time.RFC3339),
+			result := make([]entry, 0, len(members))
+			for _, m := range members {
+				result = append(result, entry{
+					UserID: m.User.ID, Username: m.User.Username,
+					Nick: m.Nick, Roles: m.Roles,
+					JoinedAt: m.JoinedAt.Format(time.RFC3339),
 				})
 			}
-			return resultJSON(result)
+			return tools.JSON(result)
 		},
 	)
 
@@ -60,24 +57,23 @@ func registerMemberTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			userID, err := req.RequireString("user_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			member, err := bot.GuildMember(guildID, userID)
+			m, err := bot.GuildMember(guildID, userID)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			result := map[string]interface{}{
-				"nick":      member.Nick,
-				"roles":     member.Roles,
-				"joined_at": member.JoinedAt.Format(time.RFC3339),
+				"nick": m.Nick, "roles": m.Roles,
+				"joined_at": m.JoinedAt.Format(time.RFC3339),
 			}
-			if member.User != nil {
-				result["user_id"] = member.User.ID
-				result["username"] = member.User.Username
-				result["avatar"] = member.User.Avatar
-				result["bot"] = member.User.Bot
+			if m.User != nil {
+				result["user_id"] = m.User.ID
+				result["username"] = m.User.Username
+				result["avatar"] = m.User.Avatar
+				result["bot"] = m.User.Bot
 			}
-			return resultJSON(result)
+			return tools.JSON(result)
 		},
 	)
 
@@ -93,7 +89,7 @@ func registerMemberTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			userID, err := req.RequireString("user_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			params := &discordgo.GuildMemberParams{}
 			args := req.GetArguments()
@@ -121,9 +117,8 @@ func registerMemberTools(s *server.MCPServer, d *Discord) {
 				b := req.GetBool("deaf", false)
 				params.Deaf = &b
 			}
-			_, err = bot.GuildMemberEditComplex(guildID, userID, params)
-			if err != nil {
-				return toolError(err.Error())
+			if _, err = bot.GuildMemberEditComplex(guildID, userID, params); err != nil {
+				return tools.Error(err.Error())
 			}
 			return mcp.NewToolResultText("member updated"), nil
 		},
@@ -136,17 +131,13 @@ func registerMemberTools(s *server.MCPServer, d *Discord) {
 			mcp.WithString("role_id", mcp.Required(), mcp.Description("Role ID to add")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			userID, err := req.RequireString("user_id")
-			if err != nil {
-				return toolError(err.Error())
+			userID, _ := req.RequireString("user_id")
+			roleID, _ := req.RequireString("role_id")
+			if userID == "" || roleID == "" {
+				return tools.Error("user_id and role_id are required")
 			}
-			roleID, err := req.RequireString("role_id")
-			if err != nil {
-				return toolError(err.Error())
-			}
-			err = bot.GuildMemberRoleAdd(guildID, userID, roleID)
-			if err != nil {
-				return toolError(err.Error())
+			if err := bot.GuildMemberRoleAdd(guildID, userID, roleID); err != nil {
+				return tools.Error(err.Error())
 			}
 			return mcp.NewToolResultText("role added"), nil
 		},
@@ -159,17 +150,13 @@ func registerMemberTools(s *server.MCPServer, d *Discord) {
 			mcp.WithString("role_id", mcp.Required(), mcp.Description("Role ID to remove")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			userID, err := req.RequireString("user_id")
-			if err != nil {
-				return toolError(err.Error())
+			userID, _ := req.RequireString("user_id")
+			roleID, _ := req.RequireString("role_id")
+			if userID == "" || roleID == "" {
+				return tools.Error("user_id and role_id are required")
 			}
-			roleID, err := req.RequireString("role_id")
-			if err != nil {
-				return toolError(err.Error())
-			}
-			err = bot.GuildMemberRoleRemove(guildID, userID, roleID)
-			if err != nil {
-				return toolError(err.Error())
+			if err := bot.GuildMemberRoleRemove(guildID, userID, roleID); err != nil {
+				return tools.Error(err.Error())
 			}
 			return mcp.NewToolResultText("role removed"), nil
 		},
@@ -177,7 +164,7 @@ func registerMemberTools(s *server.MCPServer, d *Discord) {
 
 	s.AddTool(
 		mcp.NewTool("kick_member",
-			mcp.WithDescription("Kick a member from the server (they can rejoin with invite)"),
+			mcp.WithDescription("Kick a member from the server"),
 			mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID to kick")),
 			mcp.WithString("reason", mcp.Description("Reason for kick")),
 			mcp.WithDestructiveHintAnnotation(true),
@@ -185,12 +172,10 @@ func registerMemberTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			userID, err := req.RequireString("user_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			reason := req.GetString("reason", "")
-			err = bot.GuildMemberDeleteWithReason(guildID, userID, reason)
-			if err != nil {
-				return toolError(err.Error())
+			if err = bot.GuildMemberDeleteWithReason(guildID, userID, req.GetString("reason", "")); err != nil {
+				return tools.Error(err.Error())
 			}
 			return mcp.NewToolResultText("member kicked"), nil
 		},
@@ -207,13 +192,10 @@ func registerMemberTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			userID, err := req.RequireString("user_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			reason := req.GetString("reason", "")
-			deleteDays := int(req.GetFloat("delete_days", 0))
-			err = bot.GuildBanCreateWithReason(guildID, userID, reason, deleteDays)
-			if err != nil {
-				return toolError(err.Error())
+			if err = bot.GuildBanCreateWithReason(guildID, userID, req.GetString("reason", ""), int(req.GetFloat("delete_days", 0))); err != nil {
+				return tools.Error(err.Error())
 			}
 			return mcp.NewToolResultText("member banned"), nil
 		},
@@ -227,11 +209,10 @@ func registerMemberTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			userID, err := req.RequireString("user_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			err = bot.GuildBanDelete(guildID, userID)
-			if err != nil {
-				return toolError(err.Error())
+			if err = bot.GuildBanDelete(guildID, userID); err != nil {
+				return tools.Error(err.Error())
 			}
 			return mcp.NewToolResultText("member unbanned"), nil
 		},
@@ -247,16 +228,15 @@ func registerMemberTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			userID, err := req.RequireString("user_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			duration, err := req.RequireFloat("duration_seconds")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			until := time.Now().Add(time.Duration(duration) * time.Second)
-			err = bot.GuildMemberTimeout(guildID, userID, &until)
-			if err != nil {
-				return toolError(err.Error())
+			if err = bot.GuildMemberTimeout(guildID, userID, &until); err != nil {
+				return tools.Error(err.Error())
 			}
 			return mcp.NewToolResultText(fmt.Sprintf("timed out until %s", until.Format(time.RFC3339))), nil
 		},
@@ -269,18 +249,18 @@ func registerMemberTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			bans, err := bot.GuildBans(guildID, 100, "", "")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			type b struct {
+			type entry struct {
 				UserID   string `json:"user_id"`
 				Username string `json:"username"`
 				Reason   string `json:"reason,omitempty"`
 			}
-			result := make([]b, 0, len(bans))
-			for _, ban := range bans {
-				result = append(result, b{UserID: ban.User.ID, Username: ban.User.Username, Reason: ban.Reason})
+			result := make([]entry, 0, len(bans))
+			for _, b := range bans {
+				result = append(result, entry{UserID: b.User.ID, Username: b.User.Username, Reason: b.Reason})
 			}
-			return resultJSON(result)
+			return tools.JSON(result)
 		},
 	)
 }

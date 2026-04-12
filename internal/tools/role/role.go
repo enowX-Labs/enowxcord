@@ -1,4 +1,4 @@
-package main
+package role
 
 import (
 	"context"
@@ -6,12 +6,14 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
+	"github.com/enowx/enowxcord/internal/tools"
 )
 
-func registerRoleTools(s *server.MCPServer, d *Discord) {
-	bot := d.Session
-	guildID := d.GuildID
+func intPtr(i int) *int    { return &i }
+func boolPtr(b bool) *bool { return &b }
 
+func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 	s.AddTool(
 		mcp.NewTool("list_roles",
 			mcp.WithDescription("List all roles in the server with their permissions, colors, and positions"),
@@ -19,9 +21,9 @@ func registerRoleTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			roles, err := bot.GuildRoles(guildID)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			type r struct {
+			type entry struct {
 				ID          string `json:"id"`
 				Name        string `json:"name"`
 				Color       int    `json:"color"`
@@ -31,20 +33,15 @@ func registerRoleTools(s *server.MCPServer, d *Discord) {
 				Permissions int64  `json:"permissions"`
 				Managed     bool   `json:"managed"`
 			}
-			result := make([]r, 0, len(roles))
-			for _, role := range roles {
-				result = append(result, r{
-					ID:          role.ID,
-					Name:        role.Name,
-					Color:       role.Color,
-					Position:    role.Position,
-					Hoist:       role.Hoist,
-					Mentionable: role.Mentionable,
-					Permissions: role.Permissions,
-					Managed:     role.Managed,
+			result := make([]entry, 0, len(roles))
+			for _, r := range roles {
+				result = append(result, entry{
+					ID: r.ID, Name: r.Name, Color: r.Color, Position: r.Position,
+					Hoist: r.Hoist, Mentionable: r.Mentionable,
+					Permissions: r.Permissions, Managed: r.Managed,
 				})
 			}
-			return resultJSON(result)
+			return tools.JSON(result)
 		},
 	)
 
@@ -55,23 +52,22 @@ func registerRoleTools(s *server.MCPServer, d *Discord) {
 			mcp.WithNumber("color", mcp.Description("Role color as decimal integer (e.g. 3447003 for blue)")),
 			mcp.WithBoolean("hoist", mcp.Description("Display role members separately in sidebar")),
 			mcp.WithBoolean("mentionable", mcp.Description("Allow anyone to @mention this role")),
-			mcp.WithString("permissions", mcp.Description("Permission bitfield string")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			name, err := req.RequireString("name")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			role, err := bot.GuildRoleCreate(guildID, &discordgo.RoleParams{
+			r, err := bot.GuildRoleCreate(guildID, &discordgo.RoleParams{
 				Name:        name,
 				Color:       intPtr(int(req.GetFloat("color", 0))),
 				Hoist:       boolPtr(req.GetBool("hoist", false)),
 				Mentionable: boolPtr(req.GetBool("mentionable", false)),
 			})
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]interface{}{"id": role.ID, "name": role.Name})
+			return tools.JSON(map[string]interface{}{"id": r.ID, "name": r.Name})
 		},
 	)
 
@@ -83,12 +79,11 @@ func registerRoleTools(s *server.MCPServer, d *Discord) {
 			mcp.WithNumber("color", mcp.Description("New color as decimal integer")),
 			mcp.WithBoolean("hoist", mcp.Description("Display separately")),
 			mcp.WithBoolean("mentionable", mcp.Description("Allow mentions")),
-			mcp.WithString("permissions", mcp.Description("Permission bitfield string")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			roleID, err := req.RequireString("role_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			rp := &discordgo.RoleParams{}
 			if v := req.GetString("name", ""); v != "" {
@@ -104,11 +99,11 @@ func registerRoleTools(s *server.MCPServer, d *Discord) {
 			if _, ok := args["mentionable"]; ok {
 				rp.Mentionable = boolPtr(req.GetBool("mentionable", false))
 			}
-			role, err := bot.GuildRoleEdit(guildID, roleID, rp)
+			r, err := bot.GuildRoleEdit(guildID, roleID, rp)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]interface{}{"id": role.ID, "name": role.Name})
+			return tools.JSON(map[string]interface{}{"id": r.ID, "name": r.Name})
 		},
 	)
 
@@ -121,11 +116,10 @@ func registerRoleTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			roleID, err := req.RequireString("role_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			err = bot.GuildRoleDelete(guildID, roleID)
-			if err != nil {
-				return toolError(err.Error())
+			if err = bot.GuildRoleDelete(guildID, roleID); err != nil {
+				return tools.Error(err.Error())
 			}
 			return mcp.NewToolResultText("role deleted"), nil
 		},

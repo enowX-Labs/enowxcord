@@ -1,4 +1,4 @@
-package main
+package guild
 
 import (
 	"context"
@@ -6,30 +6,25 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
+	"github.com/enowx/enowxcord/internal/tools"
 )
 
-func registerServerTools(s *server.MCPServer, d *Discord) {
-	bot := d.Session
-	guildID := d.GuildID
-
+func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 	s.AddTool(
 		mcp.NewTool("get_server_info",
 			mcp.WithDescription("Get detailed server information including name, icon, member count, boost level, features"),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			guild, err := bot.GuildWithCounts(guildID)
+			g, err := bot.GuildWithCounts(guildID)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]interface{}{
-				"id":                         guild.ID,
-				"name":                       guild.Name,
-				"description":                guild.Description,
-				"member_count":               guild.ApproximateMemberCount,
-				"online_count":               guild.ApproximatePresenceCount,
-				"premium_tier":               guild.PremiumTier,
-				"premium_subscription_count": guild.PremiumSubscriptionCount,
-				"features":                   guild.Features,
+			return tools.JSON(map[string]interface{}{
+				"id": g.ID, "name": g.Name, "description": g.Description,
+				"member_count": g.ApproximateMemberCount, "online_count": g.ApproximatePresenceCount,
+				"premium_tier": g.PremiumTier, "premium_subscription_count": g.PremiumSubscriptionCount,
+				"features": g.Features,
 			})
 		},
 	)
@@ -48,11 +43,11 @@ func registerServerTools(s *server.MCPServer, d *Discord) {
 			if v := req.GetString("description", ""); v != "" {
 				gp.Description = v
 			}
-			guild, err := bot.GuildEdit(guildID, &gp)
+			g, err := bot.GuildEdit(guildID, &gp)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]string{"name": guild.Name})
+			return tools.JSON(map[string]string{"name": g.Name})
 		},
 	)
 
@@ -63,18 +58,18 @@ func registerServerTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			emojis, err := bot.GuildEmojis(guildID)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			type em struct {
+			type entry struct {
 				ID       string `json:"id"`
 				Name     string `json:"name"`
 				Animated bool   `json:"animated"`
 			}
-			result := make([]em, 0, len(emojis))
-			for _, emoji := range emojis {
-				result = append(result, em{ID: emoji.ID, Name: emoji.Name, Animated: emoji.Animated})
+			result := make([]entry, 0, len(emojis))
+			for _, e := range emojis {
+				result = append(result, entry{ID: e.ID, Name: e.Name, Animated: e.Animated})
 			}
-			return resultJSON(result)
+			return tools.JSON(result)
 		},
 	)
 }

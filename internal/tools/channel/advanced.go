@@ -1,4 +1,4 @@
-package main
+package channel
 
 import (
 	"context"
@@ -6,15 +6,14 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
+	"github.com/enowx/enowxcord/internal/tools"
 )
 
-func registerAdvancedChannelTools(s *server.MCPServer, d *Discord) {
-	bot := d.Session
-	guildID := d.GuildID
-
+func registerAdvanced(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 	s.AddTool(
 		mcp.NewTool("create_announcement_channel",
-			mcp.WithDescription("Create an announcement (news) channel. Messages can be crossposted to following servers."),
+			mcp.WithDescription("Create an announcement (news) channel"),
 			mcp.WithString("name", mcp.Required(), mcp.Description("Channel name")),
 			mcp.WithString("category_id", mcp.Description("Parent category ID")),
 			mcp.WithString("topic", mcp.Description("Channel topic")),
@@ -22,18 +21,17 @@ func registerAdvancedChannelTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			name, err := req.RequireString("name")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			ch, err := bot.GuildChannelCreateComplex(guildID, discordgo.GuildChannelCreateData{
-				Name:     name,
-				Type:     discordgo.ChannelTypeGuildNews,
+				Name: name, Type: discordgo.ChannelTypeGuildNews,
 				ParentID: req.GetString("category_id", ""),
 				Topic:    req.GetString("topic", ""),
 			})
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]string{"id": ch.ID, "name": ch.Name})
+			return tools.JSON(map[string]string{"id": ch.ID, "name": ch.Name})
 		},
 	)
 
@@ -47,24 +45,23 @@ func registerAdvancedChannelTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			name, err := req.RequireString("name")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			ch, err := bot.GuildChannelCreateComplex(guildID, discordgo.GuildChannelCreateData{
-				Name:     name,
-				Type:     discordgo.ChannelTypeGuildStageVoice,
+				Name: name, Type: discordgo.ChannelTypeGuildStageVoice,
 				ParentID: req.GetString("category_id", ""),
 				Topic:    req.GetString("topic", ""),
 			})
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]string{"id": ch.ID, "name": ch.Name})
+			return tools.JSON(map[string]string{"id": ch.ID, "name": ch.Name})
 		},
 	)
 
 	s.AddTool(
 		mcp.NewTool("create_forum_channel",
-			mcp.WithDescription("Create a forum channel where members can create organized discussion posts"),
+			mcp.WithDescription("Create a forum channel for organized discussion posts"),
 			mcp.WithString("name", mcp.Required(), mcp.Description("Channel name")),
 			mcp.WithString("category_id", mcp.Description("Parent category ID")),
 			mcp.WithString("topic", mcp.Description("Forum guidelines/topic")),
@@ -72,18 +69,17 @@ func registerAdvancedChannelTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			name, err := req.RequireString("name")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			ch, err := bot.GuildChannelCreateComplex(guildID, discordgo.GuildChannelCreateData{
-				Name:     name,
-				Type:     discordgo.ChannelTypeGuildForum,
+				Name: name, Type: discordgo.ChannelTypeGuildForum,
 				ParentID: req.GetString("category_id", ""),
 				Topic:    req.GetString("topic", ""),
 			})
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]string{"id": ch.ID, "name": ch.Name})
+			return tools.JSON(map[string]string{"id": ch.ID, "name": ch.Name})
 		},
 	)
 
@@ -97,26 +93,23 @@ func registerAdvancedChannelTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			title, err := req.RequireString("title")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			content, err := req.RequireString("content")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			thread, err := bot.ForumThreadStartComplex(channelID, &discordgo.ThreadStart{
-				Name:                title,
-				AutoArchiveDuration: 1440,
-			}, &discordgo.MessageSend{
-				Content: content,
-			})
+				Name: title, AutoArchiveDuration: 1440,
+			}, &discordgo.MessageSend{Content: content})
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]string{"id": thread.ID, "name": thread.Name})
+			return tools.JSON(map[string]string{"id": thread.ID, "name": thread.Name})
 		},
 	)
 }

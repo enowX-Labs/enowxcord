@@ -1,4 +1,4 @@
-package main
+package channel
 
 import (
 	"context"
@@ -8,13 +8,16 @@ import (
 	"github.com/bwmarrin/discordgo"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
+
+	"github.com/enowx/enowxcord/internal/tools"
 )
 
-func registerChannelTools(s *server.MCPServer, d *Discord) {
-	bot := d.Session
-	guildID := d.GuildID
+func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
+	registerBasic(s, bot, guildID)
+	registerAdvanced(s, bot, guildID)
+}
 
-	// list_channels
+func registerBasic(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 	s.AddTool(
 		mcp.NewTool("list_channels",
 			mcp.WithDescription("List all channels in the server with their types, categories, and positions"),
@@ -22,9 +25,9 @@ func registerChannelTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			channels, err := bot.GuildChannels(guildID)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			type ch struct {
+			type entry struct {
 				ID       string `json:"id"`
 				Name     string `json:"name"`
 				Type     int    `json:"type"`
@@ -32,22 +35,17 @@ func registerChannelTools(s *server.MCPServer, d *Discord) {
 				Position int    `json:"position"`
 				Topic    string `json:"topic,omitempty"`
 			}
-			result := make([]ch, 0, len(channels))
+			result := make([]entry, 0, len(channels))
 			for _, c := range channels {
-				result = append(result, ch{
-					ID:       c.ID,
-					Name:     c.Name,
-					Type:     int(c.Type),
-					ParentID: c.ParentID,
-					Position: c.Position,
-					Topic:    c.Topic,
+				result = append(result, entry{
+					ID: c.ID, Name: c.Name, Type: int(c.Type),
+					ParentID: c.ParentID, Position: c.Position, Topic: c.Topic,
 				})
 			}
-			return resultJSON(result)
+			return tools.JSON(result)
 		},
 	)
 
-	// create_text_channel
 	s.AddTool(
 		mcp.NewTool("create_text_channel",
 			mcp.WithDescription("Create a new text channel"),
@@ -60,11 +58,10 @@ func registerChannelTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			name, err := req.RequireString("name")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			data := discordgo.GuildChannelCreateData{
-				Name:     name,
-				Type:     discordgo.ChannelTypeGuildText,
+				Name: name, Type: discordgo.ChannelTypeGuildText,
 				ParentID: req.GetString("category_id", ""),
 				Topic:    req.GetString("topic", ""),
 				NSFW:     req.GetBool("nsfw", false),
@@ -74,13 +71,12 @@ func registerChannelTools(s *server.MCPServer, d *Discord) {
 			}
 			ch, err := bot.GuildChannelCreateComplex(guildID, data)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]string{"id": ch.ID, "name": ch.Name})
+			return tools.JSON(map[string]string{"id": ch.ID, "name": ch.Name})
 		},
 	)
 
-	// create_voice_channel
 	s.AddTool(
 		mcp.NewTool("create_voice_channel",
 			mcp.WithDescription("Create a new voice channel"),
@@ -92,11 +88,10 @@ func registerChannelTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			name, err := req.RequireString("name")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			data := discordgo.GuildChannelCreateData{
-				Name:     name,
-				Type:     discordgo.ChannelTypeGuildVoice,
+				Name: name, Type: discordgo.ChannelTypeGuildVoice,
 				ParentID: req.GetString("category_id", ""),
 				Bitrate:  int(req.GetFloat("bitrate", 64000)),
 			}
@@ -105,13 +100,12 @@ func registerChannelTools(s *server.MCPServer, d *Discord) {
 			}
 			ch, err := bot.GuildChannelCreateComplex(guildID, data)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]string{"id": ch.ID, "name": ch.Name})
+			return tools.JSON(map[string]string{"id": ch.ID, "name": ch.Name})
 		},
 	)
 
-	// create_category
 	s.AddTool(
 		mcp.NewTool("create_category",
 			mcp.WithDescription("Create a new channel category"),
@@ -120,20 +114,18 @@ func registerChannelTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			name, err := req.RequireString("name")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			ch, err := bot.GuildChannelCreateComplex(guildID, discordgo.GuildChannelCreateData{
-				Name: name,
-				Type: discordgo.ChannelTypeGuildCategory,
+				Name: name, Type: discordgo.ChannelTypeGuildCategory,
 			})
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]string{"id": ch.ID, "name": ch.Name})
+			return tools.JSON(map[string]string{"id": ch.ID, "name": ch.Name})
 		},
 	)
 
-	// edit_channel
 	s.AddTool(
 		mcp.NewTool("edit_channel",
 			mcp.WithDescription("Edit an existing channel's properties"),
@@ -142,13 +134,13 @@ func registerChannelTools(s *server.MCPServer, d *Discord) {
 			mcp.WithString("topic", mcp.Description("New channel topic")),
 			mcp.WithBoolean("nsfw", mcp.Description("Whether NSFW")),
 			mcp.WithNumber("rate_limit", mcp.Description("Slowmode in seconds")),
-			mcp.WithString("category_id", mcp.Description("Move to category (empty string to remove from category)")),
+			mcp.WithString("category_id", mcp.Description("Move to category (empty string to remove)")),
 			mcp.WithNumber("position", mcp.Description("Channel position")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			edit := &discordgo.ChannelEdit{}
 			if v := req.GetString("name", ""); v != "" {
@@ -177,13 +169,12 @@ func registerChannelTools(s *server.MCPServer, d *Discord) {
 			}
 			ch, err := bot.ChannelEditComplex(channelID, edit)
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			return resultJSON(map[string]string{"id": ch.ID, "name": ch.Name})
+			return tools.JSON(map[string]string{"id": ch.ID, "name": ch.Name})
 		},
 	)
 
-	// delete_channel
 	s.AddTool(
 		mcp.NewTool("delete_channel",
 			mcp.WithDescription("Delete a channel (irreversible)"),
@@ -193,149 +184,114 @@ func registerChannelTools(s *server.MCPServer, d *Discord) {
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-			_, err = bot.ChannelDelete(channelID)
-			if err != nil {
-				return toolError(err.Error())
+			if _, err = bot.ChannelDelete(channelID); err != nil {
+				return tools.Error(err.Error())
 			}
 			return mcp.NewToolResultText("channel deleted"), nil
 		},
 	)
 
-	// set_channel_permissions
 	s.AddTool(
 		mcp.NewTool("set_channel_permissions",
 			mcp.WithDescription("Set permission overrides for a role or user on a channel"),
-			mcp.WithString("channel_id", mcp.Required(), mcp.Description("Channel ID to set permissions on")),
-			mcp.WithString("target_id", mcp.Required(), mcp.Description("Role ID or User ID to set permissions for")),
-			mcp.WithString("target_type", mcp.Required(), mcp.Description("Type of target: 'role' or 'member'")),
-			mcp.WithString("allow", mcp.Description("Allowed permissions as bitfield string (e.g. '3072' for VIEW_CHANNEL+SEND_MESSAGES)")),
+			mcp.WithString("channel_id", mcp.Required(), mcp.Description("Channel ID")),
+			mcp.WithString("target_id", mcp.Required(), mcp.Description("Role ID or User ID")),
+			mcp.WithString("target_type", mcp.Required(), mcp.Description("'role' or 'member'")),
+			mcp.WithString("allow", mcp.Description("Allowed permissions as bitfield string")),
 			mcp.WithString("deny", mcp.Description("Denied permissions as bitfield string")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			targetID, err := req.RequireString("target_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			targetType, err := req.RequireString("target_type")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-
-			var dType discordgo.PermissionOverwriteType
+			dType := discordgo.PermissionOverwriteTypeMember
 			if targetType == "role" {
 				dType = discordgo.PermissionOverwriteTypeRole
-			} else {
-				dType = discordgo.PermissionOverwriteTypeMember
 			}
+			allow, _ := strconv.ParseInt(req.GetString("allow", "0"), 10, 64)
+			deny, _ := strconv.ParseInt(req.GetString("deny", "0"), 10, 64)
 
-			allow := int64(0)
-			if v := req.GetString("allow", ""); v != "" {
-				allow, _ = strconv.ParseInt(v, 10, 64)
+			if err = bot.ChannelPermissionSet(channelID, targetID, dType, allow, deny); err != nil {
+				return tools.Error(err.Error())
 			}
-			deny := int64(0)
-			if v := req.GetString("deny", ""); v != "" {
-				deny, _ = strconv.ParseInt(v, 10, 64)
-			}
-
-			err = bot.ChannelPermissionSet(channelID, targetID, dType, allow, deny)
-			if err != nil {
-				return toolError(err.Error())
-			}
-			return resultJSON(map[string]interface{}{
-				"channel_id":  channelID,
-				"target_id":   targetID,
-				"target_type": targetType,
-				"allow":       allow,
-				"allow_names": describePermissionBits(allow),
-				"deny":        deny,
-				"deny_names":  describePermissionBits(deny),
+			return tools.JSON(map[string]interface{}{
+				"channel_id": channelID, "target_id": targetID, "target_type": targetType,
+				"allow": allow, "allow_names": tools.DescribePermissions(allow),
+				"deny": deny, "deny_names": tools.DescribePermissions(deny),
 			})
 		},
 	)
 
-	// sync_category_permissions
 	s.AddTool(
 		mcp.NewTool("sync_category_permissions",
-			mcp.WithDescription("Set permission overrides on a category AND sync to all its child channels"),
+			mcp.WithDescription("Set permission overrides on a category AND sync to all child channels"),
 			mcp.WithString("category_id", mcp.Required(), mcp.Description("Category channel ID")),
 			mcp.WithString("target_id", mcp.Required(), mcp.Description("Role ID or User ID")),
-			mcp.WithString("target_type", mcp.Required(), mcp.Description("Type: 'role' or 'member'")),
+			mcp.WithString("target_type", mcp.Required(), mcp.Description("'role' or 'member'")),
 			mcp.WithString("allow", mcp.Description("Allowed permissions as bitfield string")),
 			mcp.WithString("deny", mcp.Description("Denied permissions as bitfield string")),
-			mcp.WithBoolean("force", mcp.Description("If true, overwrite existing custom overrides on child channels")),
+			mcp.WithBoolean("force", mcp.Description("Overwrite existing custom overrides on child channels")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 			categoryID, err := req.RequireString("category_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			targetID, err := req.RequireString("target_id")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
 			targetType, err := req.RequireString("target_type")
 			if err != nil {
-				return toolError(err.Error())
+				return tools.Error(err.Error())
 			}
-
 			cat, err := bot.Channel(categoryID)
 			if err != nil {
-				return toolError("category not found: " + err.Error())
+				return tools.Errorf("category not found: %v", err)
 			}
 			if cat.Type != discordgo.ChannelTypeGuildCategory {
-				return toolError("channel is not a category")
+				return tools.Error("channel is not a category")
 			}
-
-			var dType discordgo.PermissionOverwriteType
+			dType := discordgo.PermissionOverwriteTypeMember
 			if targetType == "role" {
 				dType = discordgo.PermissionOverwriteTypeRole
-			} else {
-				dType = discordgo.PermissionOverwriteTypeMember
 			}
-
-			allow := int64(0)
-			if v := req.GetString("allow", ""); v != "" {
-				allow, _ = strconv.ParseInt(v, 10, 64)
-			}
-			deny := int64(0)
-			if v := req.GetString("deny", ""); v != "" {
-				deny, _ = strconv.ParseInt(v, 10, 64)
-			}
+			allow, _ := strconv.ParseInt(req.GetString("allow", "0"), 10, 64)
+			deny, _ := strconv.ParseInt(req.GetString("deny", "0"), 10, 64)
 			force := req.GetBool("force", false)
 
-			err = bot.ChannelPermissionSet(categoryID, targetID, dType, allow, deny)
-			if err != nil {
-				return toolError("failed to set category permissions: " + err.Error())
+			if err = bot.ChannelPermissionSet(categoryID, targetID, dType, allow, deny); err != nil {
+				return tools.Errorf("failed to set category permissions: %v", err)
 			}
-
 			channels, err := bot.GuildChannels(guildID)
 			if err != nil {
-				return toolError("failed to list channels: " + err.Error())
+				return tools.Errorf("failed to list channels: %v", err)
 			}
-
-			synced := []string{}
-			skipped := []string{}
-			failed := []string{}
-
+			var synced, skipped, failed []string
 			for _, ch := range channels {
 				if ch.ParentID != categoryID {
 					continue
 				}
 				if !force {
-					hasCustomOverride := false
+					hasOverride := false
 					for _, perm := range ch.PermissionOverwrites {
 						if perm.ID == targetID {
-							hasCustomOverride = true
+							hasOverride = true
 							break
 						}
 					}
-					if hasCustomOverride {
+					if hasOverride {
 						skipped = append(skipped, ch.Name)
 						continue
 					}
@@ -346,15 +302,11 @@ func registerChannelTools(s *server.MCPServer, d *Discord) {
 					synced = append(synced, ch.Name)
 				}
 			}
-
-			return resultJSON(map[string]interface{}{
-				"category_name": cat.Name,
-				"target_type":   targetType,
-				"allow_names":   describePermissionBits(allow),
-				"deny_names":    describePermissionBits(deny),
-				"synced":        synced,
-				"skipped":       skipped,
-				"failed":        failed,
+			return tools.JSON(map[string]interface{}{
+				"category_name": cat.Name, "target_type": targetType,
+				"allow_names": tools.DescribePermissions(allow),
+				"deny_names":  tools.DescribePermissions(deny),
+				"synced":      synced, "skipped": skipped, "failed": failed,
 			})
 		},
 	)
