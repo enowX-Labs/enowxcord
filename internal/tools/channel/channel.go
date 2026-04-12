@@ -12,17 +12,21 @@ import (
 	"github.com/enowx/enowxcord/internal/tools"
 )
 
-func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
-	registerBasic(s, bot, guildID)
-	registerAdvanced(s, bot, guildID)
+func Register(s *server.MCPServer) {
+	registerBasic(s)
+	registerAdvanced(s)
 }
 
-func registerBasic(s *server.MCPServer, bot *discordgo.Session, guildID string) {
+func registerBasic(s *server.MCPServer) {
 	s.AddTool(
 		mcp.NewTool("list_channels",
 			mcp.WithDescription("List all channels in the server with their types, categories, and positions"),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			channels, err := bot.GuildChannels(guildID)
 			if err != nil {
 				return tools.Error(err.Error())
@@ -56,6 +60,10 @@ func registerBasic(s *server.MCPServer, bot *discordgo.Session, guildID string) 
 			mcp.WithNumber("rate_limit", mcp.Description("Slowmode in seconds (0-21600)")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			name, err := req.RequireString("name")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -86,6 +94,10 @@ func registerBasic(s *server.MCPServer, bot *discordgo.Session, guildID string) 
 			mcp.WithNumber("user_limit", mcp.Description("Max users (0 = unlimited, max 99)")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			name, err := req.RequireString("name")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -112,6 +124,10 @@ func registerBasic(s *server.MCPServer, bot *discordgo.Session, guildID string) 
 			mcp.WithString("name", mcp.Required(), mcp.Description("Category name")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			name, err := req.RequireString("name")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -138,6 +154,10 @@ func registerBasic(s *server.MCPServer, bot *discordgo.Session, guildID string) 
 			mcp.WithNumber("position", mcp.Description("Channel position")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, _, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -182,6 +202,10 @@ func registerBasic(s *server.MCPServer, bot *discordgo.Session, guildID string) 
 			mcp.WithDestructiveHintAnnotation(true),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, _, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -203,6 +227,10 @@ func registerBasic(s *server.MCPServer, bot *discordgo.Session, guildID string) 
 			mcp.WithString("deny", mcp.Description("Denied permissions as bitfield string")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, _, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -244,6 +272,10 @@ func registerBasic(s *server.MCPServer, bot *discordgo.Session, guildID string) 
 			mcp.WithBoolean("force", mcp.Description("Overwrite existing custom overrides on child channels")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			categoryID, err := req.RequireString("category_id")
 			if err != nil {
 				return tools.Error(err.Error())

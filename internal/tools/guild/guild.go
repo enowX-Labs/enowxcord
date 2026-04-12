@@ -10,12 +10,16 @@ import (
 	"github.com/enowx/enowxcord/internal/tools"
 )
 
-func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
+func Register(s *server.MCPServer) {
 	s.AddTool(
 		mcp.NewTool("get_server_info",
 			mcp.WithDescription("Get detailed server information including name, icon, member count, boost level, features"),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			g, err := bot.GuildWithCounts(guildID)
 			if err != nil {
 				return tools.Error(err.Error())
@@ -36,6 +40,10 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 			mcp.WithString("description", mcp.Description("New server description")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			gp := discordgo.GuildParams{}
 			if v := req.GetString("name", ""); v != "" {
 				gp.Name = v
@@ -56,6 +64,10 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 			mcp.WithDescription("List all custom emojis in the server"),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			emojis, err := bot.GuildEmojis(guildID)
 			if err != nil {
 				return tools.Error(err.Error())

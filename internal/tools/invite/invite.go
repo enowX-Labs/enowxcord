@@ -10,12 +10,14 @@ import (
 	"github.com/enowx/enowxcord/internal/tools"
 )
 
-func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
+func Register(s *server.MCPServer) {
 	s.AddTool(
-		mcp.NewTool("list_invites",
-			mcp.WithDescription("List all active invites for the server"),
-		),
+		mcp.NewTool("list_invites", mcp.WithDescription("List all active invites for the server")),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			invites, err := bot.GuildInvites(guildID)
 			if err != nil {
 				return tools.Error(err.Error())
@@ -48,14 +50,12 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 	)
 
 	s.AddTool(
-		mcp.NewTool("create_invite",
-			mcp.WithDescription("Create an invite link for a channel"),
-			mcp.WithString("channel_id", mcp.Required(), mcp.Description("Channel ID to create invite for")),
-			mcp.WithNumber("max_age", mcp.Description("Invite expiry in seconds (0 = never, default 86400)")),
-			mcp.WithNumber("max_uses", mcp.Description("Max uses (0 = unlimited)")),
-			mcp.WithBoolean("temporary", mcp.Description("Grant temporary membership")),
-		),
+		mcp.NewTool("create_invite", mcp.WithDescription("Create an invite link for a channel"), mcp.WithString("channel_id", mcp.Required(), mcp.Description("Channel ID to create invite for")), mcp.WithNumber("max_age", mcp.Description("Invite expiry in seconds (0 = never, default 86400)")), mcp.WithNumber("max_uses", mcp.Description("Max uses (0 = unlimited)")), mcp.WithBoolean("temporary", mcp.Description("Grant temporary membership"))),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, _, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -73,12 +73,12 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 	)
 
 	s.AddTool(
-		mcp.NewTool("delete_invite",
-			mcp.WithDescription("Delete/revoke an invite"),
-			mcp.WithString("invite_code", mcp.Required(), mcp.Description("Invite code to delete")),
-			mcp.WithDestructiveHintAnnotation(true),
-		),
+		mcp.NewTool("delete_invite", mcp.WithDescription("Delete/revoke an invite"), mcp.WithString("invite_code", mcp.Required(), mcp.Description("Invite code to delete")), mcp.WithDestructiveHintAnnotation(true)),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, _, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			code, err := req.RequireString("invite_code")
 			if err != nil {
 				return tools.Error(err.Error())

@@ -12,13 +12,17 @@ import (
 	"github.com/enowx/enowxcord/internal/tools"
 )
 
-func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
+func Register(s *server.MCPServer) {
 	s.AddTool(
 		mcp.NewTool("list_members",
 			mcp.WithDescription("List server members (up to 100)"),
 			mcp.WithNumber("limit", mcp.Description("Max members to return (1-100, default 50)")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			limit := int(req.GetFloat("limit", 50))
 			if limit > 100 {
 				limit = 100
@@ -55,6 +59,10 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 			mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			userID, err := req.RequireString("user_id")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -87,6 +95,10 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 			mcp.WithBoolean("deaf", mcp.Description("Server deafen")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			userID, err := req.RequireString("user_id")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -124,13 +136,12 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 		},
 	)
 
-	s.AddTool(
-		mcp.NewTool("add_role_to_member",
-			mcp.WithDescription("Add a role to a member"),
-			mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID")),
-			mcp.WithString("role_id", mcp.Required(), mcp.Description("Role ID to add")),
-		),
+	s.AddTool(mcp.NewTool("add_role_to_member", mcp.WithDescription("Add a role to a member"), mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID")), mcp.WithString("role_id", mcp.Required(), mcp.Description("Role ID to add"))),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			userID, _ := req.RequireString("user_id")
 			roleID, _ := req.RequireString("role_id")
 			if userID == "" || roleID == "" {
@@ -143,13 +154,12 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 		},
 	)
 
-	s.AddTool(
-		mcp.NewTool("remove_role_from_member",
-			mcp.WithDescription("Remove a role from a member"),
-			mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID")),
-			mcp.WithString("role_id", mcp.Required(), mcp.Description("Role ID to remove")),
-		),
+	s.AddTool(mcp.NewTool("remove_role_from_member", mcp.WithDescription("Remove a role from a member"), mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID")), mcp.WithString("role_id", mcp.Required(), mcp.Description("Role ID to remove"))),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			userID, _ := req.RequireString("user_id")
 			roleID, _ := req.RequireString("role_id")
 			if userID == "" || roleID == "" {
@@ -162,14 +172,12 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 		},
 	)
 
-	s.AddTool(
-		mcp.NewTool("kick_member",
-			mcp.WithDescription("Kick a member from the server"),
-			mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID to kick")),
-			mcp.WithString("reason", mcp.Description("Reason for kick")),
-			mcp.WithDestructiveHintAnnotation(true),
-		),
+	s.AddTool(mcp.NewTool("kick_member", mcp.WithDescription("Kick a member from the server"), mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID to kick")), mcp.WithString("reason", mcp.Description("Reason for kick")), mcp.WithDestructiveHintAnnotation(true)),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			userID, err := req.RequireString("user_id")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -181,15 +189,12 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 		},
 	)
 
-	s.AddTool(
-		mcp.NewTool("ban_member",
-			mcp.WithDescription("Ban a member from the server (permanent until unbanned)"),
-			mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID to ban")),
-			mcp.WithString("reason", mcp.Description("Reason for ban")),
-			mcp.WithNumber("delete_days", mcp.Description("Days of messages to delete (0-7)")),
-			mcp.WithDestructiveHintAnnotation(true),
-		),
+	s.AddTool(mcp.NewTool("ban_member", mcp.WithDescription("Ban a member from the server (permanent until unbanned)"), mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID to ban")), mcp.WithString("reason", mcp.Description("Reason for ban")), mcp.WithNumber("delete_days", mcp.Description("Days of messages to delete (0-7)")), mcp.WithDestructiveHintAnnotation(true)),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			userID, err := req.RequireString("user_id")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -201,12 +206,12 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 		},
 	)
 
-	s.AddTool(
-		mcp.NewTool("unban_member",
-			mcp.WithDescription("Unban a previously banned user"),
-			mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID to unban")),
-		),
+	s.AddTool(mcp.NewTool("unban_member", mcp.WithDescription("Unban a previously banned user"), mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID to unban"))),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			userID, err := req.RequireString("user_id")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -218,14 +223,12 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 		},
 	)
 
-	s.AddTool(
-		mcp.NewTool("timeout_member",
-			mcp.WithDescription("Timeout (mute) a member for a duration"),
-			mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID to timeout")),
-			mcp.WithNumber("duration_seconds", mcp.Required(), mcp.Description("Timeout duration in seconds (max 2419200 = 28 days)")),
-			mcp.WithString("reason", mcp.Description("Reason for timeout")),
-		),
+	s.AddTool(mcp.NewTool("timeout_member", mcp.WithDescription("Timeout (mute) a member for a duration"), mcp.WithString("user_id", mcp.Required(), mcp.Description("User ID to timeout")), mcp.WithNumber("duration_seconds", mcp.Required(), mcp.Description("Timeout duration in seconds (max 2419200 = 28 days)")), mcp.WithString("reason", mcp.Description("Reason for timeout"))),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			userID, err := req.RequireString("user_id")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -242,11 +245,12 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 		},
 	)
 
-	s.AddTool(
-		mcp.NewTool("list_bans",
-			mcp.WithDescription("List all banned users"),
-		),
+	s.AddTool(mcp.NewTool("list_bans", mcp.WithDescription("List all banned users")),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			bans, err := bot.GuildBans(guildID, 100, "", "")
 			if err != nil {
 				return tools.Error(err.Error())

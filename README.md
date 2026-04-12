@@ -1,28 +1,23 @@
 # enowxcord
 
-MCP server for Discord server management. Exposes 40 tools for managing channels, roles, members, webhooks, invites, and messages — usable from Claude Desktop, Cursor, OpenCode, or any MCP-compatible AI client.
+Multi-tenant MCP server for Discord server management. Exposes 40 tools for managing channels, roles, members, webhooks, invites, and messages — usable from Claude Desktop, Cursor, OpenCode, or any MCP-compatible AI client.
+
+Each user provides their own Discord bot token and guild ID via headers. No server-side credentials needed.
 
 Built with Go, [mcp-go](https://github.com/mark3labs/mcp-go), and [discordgo](https://github.com/bwmarrin/discordgo).
 
 ## Quick Start
 
 ```bash
-# Build
 go build -o enowxcord ./cmd/enowxcord
-
-# Run (SSE transport, default port 8080)
-DISCORD_TOKEN=your-bot-token GUILD_ID=your-guild-id ./enowxcord
+./enowxcord
 ```
 
-## Environment Variables
-
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `DISCORD_TOKEN` | Yes | — | Discord bot token |
-| `GUILD_ID` | Yes | — | Target Discord server ID |
-| `PORT` | No | `8080` | HTTP port for SSE server |
+Server starts on port `8080` by default. Set `PORT` env var to change.
 
 ## Connect from AI Clients
+
+Users provide their Discord bot token and guild ID via HTTP headers when connecting.
 
 ### Claude Desktop
 
@@ -32,27 +27,53 @@ Add to `~/.config/claude/claude_desktop_config.json`:
 {
   "mcpServers": {
     "enowxcord": {
-      "url": "http://localhost:8080/sse"
+      "url": "https://your-domain.com/sse",
+      "headers": {
+        "X-Discord-Token": "your-bot-token",
+        "X-Guild-ID": "your-guild-id"
+      }
     }
   }
 }
 ```
 
-### Cursor / OpenCode
+### Cursor
 
-MCP server URL: `http://localhost:8080/sse`
+MCP server URL: `https://your-domain.com/sse`
+
+Set headers `X-Discord-Token` and `X-Guild-ID` in the MCP configuration.
+
+### OpenCode
+
+```json
+{
+  "url": "https://your-domain.com/sse",
+  "headers": {
+    "X-Discord-Token": "your-bot-token",
+    "X-Guild-ID": "your-guild-id"
+  }
+}
+```
 
 ## Deploy with Docker
 
 ```bash
 docker build -t enowxcord .
-docker run -d -p 8080:8080 \
-  -e DISCORD_TOKEN=your-bot-token \
-  -e GUILD_ID=your-guild-id \
-  enowxcord
+docker run -d -p 8080:8080 enowxcord
 ```
 
-For remote deployments (Dokploy, Railway, etc.), set a domain and connect via `https://your-domain.com/sse`.
+No environment variables needed on the server — each user authenticates via headers.
+
+For Dokploy, Railway, etc.: deploy the container, set a domain, users connect via `https://your-domain.com/sse`.
+
+## Headers
+
+| Header | Required | Description |
+|---|---|---|
+| `X-Discord-Token` | Yes | User's Discord bot token |
+| `X-Guild-ID` | Yes | Target Discord server ID |
+
+Sessions are pooled per token+guild pair and reused across requests.
 
 ## Available Tools
 

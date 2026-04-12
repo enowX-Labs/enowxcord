@@ -4,19 +4,20 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/bwmarrin/discordgo"
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
 	"github.com/enowx/enowxcord/internal/tools"
 )
 
-func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
+func Register(s *server.MCPServer) {
 	s.AddTool(
-		mcp.NewTool("list_webhooks",
-			mcp.WithDescription("List all webhooks in the server"),
-		),
+		mcp.NewTool("list_webhooks", mcp.WithDescription("List all webhooks in the server")),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			webhooks, err := bot.GuildWebhooks(guildID)
 			if err != nil {
 				return tools.Error(err.Error())
@@ -35,12 +36,12 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 	)
 
 	s.AddTool(
-		mcp.NewTool("create_webhook",
-			mcp.WithDescription("Create a webhook for a channel"),
-			mcp.WithString("channel_id", mcp.Required(), mcp.Description("Channel ID for the webhook")),
-			mcp.WithString("name", mcp.Required(), mcp.Description("Webhook name")),
-		),
+		mcp.NewTool("create_webhook", mcp.WithDescription("Create a webhook for a channel"), mcp.WithString("channel_id", mcp.Required(), mcp.Description("Channel ID for the webhook")), mcp.WithString("name", mcp.Required(), mcp.Description("Webhook name"))),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, _, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -61,12 +62,12 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 	)
 
 	s.AddTool(
-		mcp.NewTool("delete_webhook",
-			mcp.WithDescription("Delete a webhook"),
-			mcp.WithString("webhook_id", mcp.Required(), mcp.Description("Webhook ID to delete")),
-			mcp.WithDestructiveHintAnnotation(true),
-		),
+		mcp.NewTool("delete_webhook", mcp.WithDescription("Delete a webhook"), mcp.WithString("webhook_id", mcp.Required(), mcp.Description("Webhook ID to delete")), mcp.WithDestructiveHintAnnotation(true)),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, _, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			webhookID, err := req.RequireString("webhook_id")
 			if err != nil {
 				return tools.Error(err.Error())

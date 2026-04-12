@@ -13,12 +13,16 @@ import (
 func intPtr(i int) *int    { return &i }
 func boolPtr(b bool) *bool { return &b }
 
-func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
+func Register(s *server.MCPServer) {
 	s.AddTool(
 		mcp.NewTool("list_roles",
 			mcp.WithDescription("List all roles in the server with their permissions, colors, and positions"),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			roles, err := bot.GuildRoles(guildID)
 			if err != nil {
 				return tools.Error(err.Error())
@@ -54,6 +58,10 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 			mcp.WithBoolean("mentionable", mcp.Description("Allow anyone to @mention this role")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			name, err := req.RequireString("name")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -81,6 +89,10 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 			mcp.WithBoolean("mentionable", mcp.Description("Allow mentions")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			roleID, err := req.RequireString("role_id")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -114,6 +126,10 @@ func Register(s *server.MCPServer, bot *discordgo.Session, guildID string) {
 			mcp.WithDestructiveHintAnnotation(true),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			roleID, err := req.RequireString("role_id")
 			if err != nil {
 				return tools.Error(err.Error())

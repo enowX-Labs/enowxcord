@@ -10,7 +10,7 @@ import (
 	"github.com/enowx/enowxcord/internal/tools"
 )
 
-func registerAdvanced(s *server.MCPServer, bot *discordgo.Session, guildID string) {
+func registerAdvanced(s *server.MCPServer) {
 	s.AddTool(
 		mcp.NewTool("create_announcement_channel",
 			mcp.WithDescription("Create an announcement (news) channel"),
@@ -19,6 +19,10 @@ func registerAdvanced(s *server.MCPServer, bot *discordgo.Session, guildID strin
 			mcp.WithString("topic", mcp.Description("Channel topic")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			name, err := req.RequireString("name")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -43,6 +47,10 @@ func registerAdvanced(s *server.MCPServer, bot *discordgo.Session, guildID strin
 			mcp.WithString("topic", mcp.Description("Stage topic")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			name, err := req.RequireString("name")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -67,6 +75,10 @@ func registerAdvanced(s *server.MCPServer, bot *discordgo.Session, guildID strin
 			mcp.WithString("topic", mcp.Description("Forum guidelines/topic")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			name, err := req.RequireString("name")
 			if err != nil {
 				return tools.Error(err.Error())
@@ -91,6 +103,10 @@ func registerAdvanced(s *server.MCPServer, bot *discordgo.Session, guildID strin
 			mcp.WithString("content", mcp.Required(), mcp.Description("Initial message content")),
 		),
 		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, _, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
 			channelID, err := req.RequireString("channel_id")
 			if err != nil {
 				return tools.Error(err.Error())
