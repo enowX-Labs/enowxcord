@@ -140,4 +140,46 @@ func Register(s *server.MCPServer) {
 			return mcp.NewToolResultText("role deleted"), nil
 		},
 	)
+
+	s.AddTool(
+		mcp.NewTool("reorder_roles",
+			mcp.WithDescription("Reorder roles. Provide role IDs in the desired order (first = highest position). Roles not listed keep their relative order below."),
+			mcp.WithArray("role_ids", mcp.Required(), mcp.Description("Role IDs from highest to lowest position"), mcp.Items(map[string]any{"type": "string"})),
+		),
+		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
+			arr, ok := req.GetArguments()["role_ids"].([]any)
+			if !ok || len(arr) == 0 {
+				return tools.Error("role_ids is required and must be a non-empty array")
+			}
+			// Highest position number = top of the list. Assign descending positions.
+			roles := make([]*discordgo.Role, 0, len(arr))
+			pos := len(arr)
+			for _, v := range arr {
+				id, ok := v.(string)
+				if !ok || id == "" {
+					continue
+				}
+				roles = append(roles, &discordgo.Role{ID: id, Position: pos})
+				pos--
+			}
+			updated, err := bot.GuildRoleReorder(guildID, roles)
+			if err != nil {
+				return tools.Error(err.Error())
+			}
+			type entry struct {
+				ID       string `json:"id"`
+				Name     string `json:"name"`
+				Position int    `json:"position"`
+			}
+			result := make([]entry, 0, len(updated))
+			for _, r := range updated {
+				result = append(result, entry{ID: r.ID, Name: r.Name, Position: r.Position})
+			}
+			return tools.JSON(result)
+		},
+	)
 }

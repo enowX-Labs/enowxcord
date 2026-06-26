@@ -267,4 +267,65 @@ func Register(s *server.MCPServer) {
 			return tools.JSON(result)
 		},
 	)
+
+	s.AddTool(
+		mcp.NewTool("search_members",
+			mcp.WithDescription("Search server members whose username or nickname starts with a query string"),
+			mcp.WithString("query", mcp.Required(), mcp.Description("Prefix to match against username or nickname")),
+			mcp.WithNumber("limit", mcp.Description("Max results (1-1000, default 25)")),
+		),
+		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, guildID, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
+			query, err := req.RequireString("query")
+			if err != nil {
+				return tools.Error(err.Error())
+			}
+			limit := int(req.GetFloat("limit", 25))
+			if limit < 1 || limit > 1000 {
+				limit = 25
+			}
+			members, err := bot.GuildMembersSearch(guildID, query, limit)
+			if err != nil {
+				return tools.Error(err.Error())
+			}
+			type entry struct {
+				UserID   string `json:"user_id"`
+				Username string `json:"username"`
+				Nick     string `json:"nick,omitempty"`
+			}
+			result := make([]entry, 0, len(members))
+			for _, m := range members {
+				e := entry{Nick: m.Nick}
+				if m.User != nil {
+					e.UserID = m.User.ID
+					e.Username = m.User.Username
+				}
+				result = append(result, e)
+			}
+			return tools.JSON(result)
+		},
+	)
+
+	s.AddTool(
+		mcp.NewTool("get_bot_user",
+			mcp.WithDescription("Get information about the bot's own user account"),
+		),
+		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, errResult := tools.BotFromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
+			u, err := bot.User("@me")
+			if err != nil {
+				return tools.Error(err.Error())
+			}
+			return tools.JSON(map[string]any{
+				"id": u.ID, "username": u.Username, "discriminator": u.Discriminator,
+				"bot": u.Bot, "avatar": u.Avatar,
+			})
+		},
+	)
 }

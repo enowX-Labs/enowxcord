@@ -19,6 +19,33 @@ func Register(s *server.MCPServer) {
 
 func registerBasic(s *server.MCPServer) {
 	s.AddTool(
+		mcp.NewTool("get_channel",
+			mcp.WithDescription("Get detailed information about a single channel"),
+			mcp.WithString("channel_id", mcp.Required(), mcp.Description("Channel ID")),
+		),
+		func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+			bot, _, errResult := tools.FromContext(ctx)
+			if errResult != nil {
+				return errResult, nil
+			}
+			channelID, err := req.RequireString("channel_id")
+			if err != nil {
+				return tools.Error(err.Error())
+			}
+			c, err := bot.Channel(channelID)
+			if err != nil {
+				return tools.Error(err.Error())
+			}
+			return tools.JSON(map[string]any{
+				"id": c.ID, "name": c.Name, "type": int(c.Type),
+				"parent_id": c.ParentID, "position": c.Position, "topic": c.Topic,
+				"nsfw": c.NSFW, "rate_limit_per_user": c.RateLimitPerUser,
+				"bitrate": c.Bitrate, "user_limit": c.UserLimit,
+			})
+		},
+	)
+
+	s.AddTool(
 		mcp.NewTool("list_channels",
 			mcp.WithDescription("List all channels in the server with their types, categories, and positions"),
 		),
