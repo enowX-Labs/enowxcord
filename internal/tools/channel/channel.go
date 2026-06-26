@@ -36,11 +36,24 @@ func registerBasic(s *server.MCPServer) {
 			if err != nil {
 				return tools.Error(err.Error())
 			}
+			overwrites := make([]map[string]any, 0, len(c.PermissionOverwrites))
+			for _, o := range c.PermissionOverwrites {
+				otype := "role"
+				if o.Type == discordgo.PermissionOverwriteTypeMember {
+					otype = "member"
+				}
+				overwrites = append(overwrites, map[string]any{
+					"id": o.ID, "type": otype,
+					"allow": strconv.FormatInt(o.Allow, 10), "allow_names": tools.DescribePermissions(o.Allow),
+					"deny": strconv.FormatInt(o.Deny, 10), "deny_names": tools.DescribePermissions(o.Deny),
+				})
+			}
 			return tools.JSON(map[string]any{
 				"id": c.ID, "name": c.Name, "type": int(c.Type),
 				"parent_id": c.ParentID, "position": c.Position, "topic": c.Topic,
 				"nsfw": c.NSFW, "rate_limit_per_user": c.RateLimitPerUser,
 				"bitrate": c.Bitrate, "user_limit": c.UserLimit,
+				"permission_overwrites": overwrites,
 			})
 		},
 	)
